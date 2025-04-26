@@ -1,5 +1,5 @@
 // Constants
-final int NUM_PARTICLES = 4000;
+final int NUM_PARTICLES = 8000;
 final float GROUP_RADIUS = 30;
 final float GROUP_CHANCE = 0.2;
 final float WIND_STRENGTH = 0.1;

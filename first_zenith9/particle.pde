@@ -1,4 +1,4 @@
-  class Particle {
+class Particle {
   PVector position, velocity, acceleration;
   color baseColor;
   color currentColor;
@@ -51,24 +51,27 @@
   }
   
   void handleGroupBehavior() {
-    if (!groupable && groupLeader == null) return;
-    
+    // Fix: Check that both groupable AND groupLeader is not null
+    if (groupable && groupLeader != null) {
       // Follow group leader
       PVector attraction = PVector.sub(groupLeader.position, position);
       attraction.setMag(1.5);
       acceleration.add(attraction);
       
       // Avoid other group members
-      for (Particle other : groupMembers) {
-        if (other != this) {
-          PVector repulsion = PVector.sub(position, other.position);
-          float distSq = repulsion.magSq();
-          if (distSq < sq(GROUP_RADIUS * 1.2)) {
-            repulsion.setMag(REPEL_STRENGTH);
-            acceleration.add(repulsion);
+      if (groupMembers != null && !groupMembers.isEmpty()) {
+        for (Particle other : groupMembers) {
+          if (other != null && other != this) {
+            PVector repulsion = PVector.sub(position, other.position);
+            float distSq = repulsion.magSq();
+            if (distSq < sq(GROUP_RADIUS * 1.2)) {
+              repulsion.setMag(REPEL_STRENGTH);
+              acceleration.add(repulsion);
+            }
           }
         }
       }
+    }
   }
   
   void handleEdges() {
@@ -134,7 +137,7 @@
   }
   
   void scatter() {
-    velocity = PVector.random2D().mult(baseSpeed);
+    velocity = PVector.random2D().mult(baseSpeed * 3); // Added multiplier for more dramatic scatter
     if (groupable) {
       groupLeader = null;
       grouped = false;
@@ -144,24 +147,35 @@
   
   void groupParticles() {
     for (Particle other : particles) {
-      if (other != this && other.groupable) {
+      if (other != null && other != this && other.groupable) {
         float dist = position.dist(other.position);
         if (dist < GROUP_RADIUS) {
           // Establish leadership if needed
-          if (groupLeader == null && random(1) < GROUP_CHANCE) {
+          if (groupLeader == null && other.groupLeader == null && random(1) < GROUP_CHANCE) {
             groupLeader = this;
-            groupMembers.add(this);
+            grouped = true;
+            if (groupMembers.isEmpty()) {
+              groupMembers.add(this);
+            }
           }
           
-          // Add new members
-          if (!groupMembers.contains(other) && random(1) < GROUP_CHANCE) {
+          // Use existing leader or become part of another's group
+          if (groupLeader == null && other.groupLeader != null) {
+            groupLeader = other.groupLeader;
+            grouped = true;
+            groupMembers = other.groupMembers;
+            if (!groupMembers.contains(this)) {
+              groupMembers.add(this);
+            }
+          }
+          
+          // Add other to our group if we're the leader
+          if (groupLeader == this && !groupMembers.contains(other) && random(1) < GROUP_CHANCE) {
+            other.groupLeader = this;
+            other.grouped = true;
+            other.groupMembers = this.groupMembers;
             groupMembers.add(other);
           }
-          
-          // Share group info
-          other.groupLeader = groupLeader;
-          other.grouped = true;
-          other.groupMembers = this.groupMembers;
           
           // Apply spring force
           PVector spring = PVector.sub(other.position, position);
